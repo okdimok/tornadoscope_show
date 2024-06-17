@@ -1,0 +1,3 @@
+ipython
+websockets
+ipykernel
