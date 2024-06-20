@@ -1,3 +1,12 @@
 ipython
 websockets
 ipykernel
+sacn
+ruamel.yaml
+pygame
+hydra-core
+dictdiffer
+requests
+gpiozero; "arm" in platform.machine
+RPi.GPIO; "arm" in platform.machine
+coloredlogs; "posix" == os.name
