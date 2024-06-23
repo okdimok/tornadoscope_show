@@ -116,6 +116,19 @@ class StartRed(SetTornadoscopeState):
         )
         super().__init__(duration, tornadoscope_state)
 
+class StartGreen(SetTornadoscopeState):
+    def __init__(self, duration: float):
+        tornadoscope_state = TornadoscopeState.from_overrides(
+            {
+                tv.freq: 20,
+            },
+            [{
+                tv.phase_state: 1,
+                tv.phase_hue_val: 255 // 3,
+            }]
+        )
+        super().__init__(duration, tornadoscope_state)
+
 
 
         

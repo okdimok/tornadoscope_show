@@ -70,7 +70,10 @@ class Show:
             se.set_device(device)
     
 class CoolTornado(NamingEnum):
-    default = Show([StartRed(5)])
+    default = Show([
+        StartRed(5),
+        StartGreen(5)
+    ])
     
 
 CoolTornado.__init_names__()
