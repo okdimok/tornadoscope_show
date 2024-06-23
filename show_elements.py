@@ -1,7 +1,12 @@
+from __future__ import annotations
 from threading import Event, Timer, Lock, Thread
 import time
 import logging
+from utils import dotdict, NamingEnum
 from math import floor
+from gyverhub_device import GHDevice
+from tornadoscope_state import TornadoscopeVariables as tv, TornadoscopeState
+
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +14,8 @@ class ShowElement:
     _sleep_timer: Timer
     _is_activating_lock: Lock = Lock()
 
-    def __init__(self, duration):
+    def __init__(self, duration: float):
+        self.device = None
         self.duration = duration
 
     def sleep(self):
@@ -17,15 +23,15 @@ class ShowElement:
         self._sleep_timer.start()
         self._sleep_timer.join()
 
-    def activate(self):
+    async def activate(self):
         logger.debug("activating {self}")
 
     def deactivate(self):
         pass
 
-    def run(self):
+    async def run(self):
         with self._is_activating_lock:
-            self.activate()
+            await self.activate()
         self.sleep()
         self.deactivate()
 
@@ -38,13 +44,16 @@ class ShowElement:
 
 
     def __str__(self) -> str:
-        return f"{self.__class__.__name__}(pow {self.eff_intensity}, spd {self.eff_speed}) for {self.duration} s"
+        return f"{self.__class__.__name__} for {self.duration} s"
+    
+    def set_device(self, device: GHDevice):
+        self.device = device
     
 class IterativeShowElementExample(ShowElement):
-    def __init__(self, duration):
-        super().__init__(duration)
+    def __init__(self, device: GHDevice, duration: float):
+        super().__init__(device, duration)
 
-    def activate(self):
+    async def activate(self):
         # set initial state
         pass       
 
@@ -55,8 +64,6 @@ class IterativeShowElementExample(ShowElement):
             # make one step
             pass
         return self.duration < time.time() - self.last_step
-
-    
 
     def iterate(self):
         if not True:
@@ -75,3 +82,41 @@ class IterativeShowElementExample(ShowElement):
 
     def deactivate(self):
         logging.debug("Deactivating sACN senders.")
+        
+
+class SetTornadoscopeState(ShowElement):
+    def __init__(self, duration: float, tornadoscope_state: TornadoscopeState):
+        super().__init__(duration)
+        self.tornadoscope_state = tornadoscope_state
+
+    async def activate(self):
+        prev_state = self.device.tornadoscope_state
+        diff = prev_state.diff(self.tornadoscope_state)
+        state_diff, phase_diff = diff
+        for k, v in state_diff.items():
+            await self.device.set(k, v)
+        for i, p in enumerate(phase_diff):
+            if p:
+                await self.device.set(tv.phase, i)
+                for k, v in p.items():
+                    await self.device.set(k, v)
+        self.device.state = self.tornadoscope_state
+
+
+class StartRed(SetTornadoscopeState):
+    def __init__(self, duration: float):
+        tornadoscope_state = TornadoscopeState.from_overrides(
+            {
+                tv.freq: 20,
+            },
+            [{
+                tv.phase_state: 1,
+                tv.phase_hue_val: 0,
+            }]
+        )
+        super().__init__(duration, tornadoscope_state)
+
+
+
+        
+

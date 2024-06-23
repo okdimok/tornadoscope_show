@@ -32,12 +32,12 @@ class TornadoscopeState:
     def from_defaults(cls):
         global_state = {
             tv.state: 1,
-            tv.freq: 15,
+            tv.freq: 20,
             tv.ampliX: 50,
             tv.ampliY: 50,
             tv.phaseY: 255 // 4,
             tv.multY: 1,
-            tv.expo: 831,
+            tv.expo: 1999,
         }
         phases = [{
                 tv.phase: i,

@@ -3,17 +3,22 @@ import asyncio
 import re
 import json
 import traceback 
+import logging
+import functools
+
+
+logger = logging.getLogger(__name__)
 
 
 from gyverhub_tags import GHTag
-from tornadoscope_state import TornadoscopeVariables
+from tornadoscope_state import TornadoscopeVariables, TornadoscopeState
 
 # Where the packet processing happens
 # https://github.com/GyverLibs/GyverHub/blob/00e1343ae12d9e5446e8418856ddb2fbc898f176/src/core/hub.h#L216
 
 
 
-class Device:
+class GHDevice:
     def __init__(self, ip, port, dev_id, client_id) -> None:
         self.ip = ip
         self.port = port
@@ -21,13 +26,12 @@ class Device:
         self.client_id = client_id
         self.websocket = None
         self.comm_lock = asyncio.Lock()
+        self.tornadoscope_state = TornadoscopeState.from_defaults()
 
     @staticmethod
-    async def from_ip(ip, client_id="PYcli"):
+    def from_ip(ip, client_id="PYcli"):
         port = 81
-        d = Device(ip, port, None, client_id)
-        result = await d.discover()
-        d.dev_id = result[0]['id']
+        d = GHDevice(ip, port, None, client_id)
         return d
 
 
@@ -39,6 +43,9 @@ class Device:
             print(f"Connecting to {self.get_uri()}")
             self.websocket = await websockets.connect(self.get_uri())
             print("Connection established")
+            if self.dev_id is None:
+                result = await self.discover()
+                self.dev_id = result[0]['id']
         except Exception as e:
             print(f"Failed to connect: {e}")
 
@@ -74,7 +81,7 @@ class Device:
                         current_response += response
                         if not current_response.endswith("}#"):
                             continue
-                        response = Device.decode_response(current_response)
+                        response = GHDevice.decode_response(current_response)
                         current_response = ""
                         # print(f"Decoded: {response}")
                         if not response.startswith("#{") and not response.endswith("}#"):
@@ -120,9 +127,21 @@ class Device:
     async def ping(self):
         await self.run_query("ping")
 
+
+class GHDummyDevice(GHDevice):
+    def __init__(self) -> None:
+        super().__init__("dummy_ip", "dummy_port", "dummy_dev_id", "dummy_cli_id")
+
+    async def run_query(self, query="ping", n_responses=1):
+        logger.debug(f"Running query '{query}' with {n_responses} responses")
+    
+@functools.lru_cache(maxsize=None)
+def get_current_device():
+    return 
+
 async def main():
-    # device = await Device.from_ip("192.168.123.17")
-    device = await Device.from_ip("192.168.11.70")
+    # device = Device.from_ip("192.168.123.17")
+    device = GHDevice.from_ip("192.168.11.70")
     import datetime
     start = datetime.datetime.now().timestamp()
     n = 100

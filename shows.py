@@ -1,5 +1,6 @@
 from threading import Event, Lock
 from show_elements import *
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ class Show:
         s += ",\n".join(str(se) for se in self.elements)
         return s
 
-    def run_once(self):
+    async def run_once(self):
         self._is_not_running.clear()
         logger.info(f"#"*6 + f" Running {self}.")
         for se in self.elements:
@@ -28,7 +29,7 @@ class Show:
                 break
             logger.info(f"#"*3 + f" launching {se}")
             self._current_show_element = se
-            se.run()
+            await se.run()
         self._is_not_running.set()
         cancelled = self._needs_stop.is_set()
         reason = "Canceled" if cancelled else "Finished"
@@ -51,9 +52,9 @@ class Show:
     def is_running(self) -> bool:
         return not self._is_not_running.is_set()
         
-    def run_infinetely(self):
+    async def run_infinetely(self):
         while True:
-            self.run_once()
+            await self.run_once()
             if self._needs_stop.is_set():
                 break
 
@@ -63,3 +64,13 @@ class Show:
     def __str__(self) -> str:
         return f"{self.__class__.__name__} {self.name}"
     
+    def set_device(self, device):
+        self.device = device
+        for se in self.elements:
+            se.set_device(device)
+    
+class CoolTornado(NamingEnum):
+    default = Show([StartRed(5)])
+    
+
+CoolTornado.__init_names__()
